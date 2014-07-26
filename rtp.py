@@ -7,6 +7,7 @@ import re
 import unicodedata
 import os
 import string
+import sys
 
 months = {
         'Jan': '01',
@@ -23,29 +24,37 @@ months = {
         'Dez': '12'
         }
 
-
+scriptpath = os.path.dirname(os.path.realpath(__file__))
 validFilenameChars = "-_. %s%s" % (string.ascii_letters, string.digits)
 
 def removeDisallowedFilenameChars(filename):
     cleanedFilename = unicodedata.normalize('NFKD', filename).encode('ASCII', 'ignore')
     return ''.join(c for c in cleanedFilename if c in validFilenameChars)
 
-def parseRTMP(url,title):
+def parseRTMP(url,title,progId):
     url = 'http://www.rtp.pt' + url
+    programpath = scriptpath+"/"+progId
+    if os.path.isdir(programpath) == False:
+            os.makedirs(programpath)
+    destfn = programpath+"/"+title+'.mp3'
     page = urllib2.urlopen(url)
     match = re.search('"file": ".*?//(.*?)"', page.read(), re.MULTILINE)
     if match:
-        cmd = 'wget "http://rsspod.rtp.pt/podcasts/' + match.group(1) + '" -O "'+title+'.mp3"'
-        print cmd
-        if os.path.isfile(title+'.mp3'):
+        if os.path.isfile(destfn):
             print "- Ja downloadada... a ignorar"
             return
-
         print "- A sacar..."
+        cmd = 'wget "http://rsspod.rtp.pt/podcasts/' + match.group(1) + '" -O "'+destfn+'"'
         os.system(cmd + "> /dev/null 2>&1")
         print "- Done"
 
-id = "1085"
+if len(sys.argv) != 2:
+    sys.exit("Run with "+sys.argv[0]+" [progId]")
+
+if sys.argv[1].isdigit():
+    id = sys.argv[1]
+else:
+    sys.exit("progId must be a number")
 
 # apanhar o numero total de paginas
 url = "http://www.rtp.pt/play/browseprog/"+id+"/1/true"
@@ -84,7 +93,7 @@ for c in range(1,int(totalpages)):
         print "-- " +  dt, pt
 
         title = removeDisallowedFilenameChars(dt + "-" + pt)
-        parseRTMP(link['href'],title)
+        parseRTMP(link['href'],title,id)
 
 
 
