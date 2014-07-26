@@ -42,19 +42,20 @@ def parseRTMP(url,title,progId):
     if match:
         if os.path.isfile(destfn):
             print "- Ja downloadada... a ignorar"
-            return
+            return False
         print "- A sacar..."
         cmd = 'wget "http://rsspod.rtp.pt/podcasts/' + match.group(1) + '" -O "'+destfn+'"'
         os.system(cmd + "> /dev/null 2>&1")
         print "- Done"
+        return True
 
 if len(sys.argv) != 2:
-    sys.exit("Run with "+sys.argv[0]+" [progId]")
+    sys.exit("Correr com "+sys.argv[0]+" [progId]")
 
 if sys.argv[1].isdigit():
     id = sys.argv[1]
 else:
-    sys.exit("progId must be a number")
+    sys.exit("progId tem de ser um numero")
 
 # apanhar o numero total de paginas
 url = "http://www.rtp.pt/play/browseprog/"+id+"/1/true"
@@ -65,6 +66,7 @@ if match:
 else:
     exit
 
+exists = 0
 for c in range(1,int(totalpages)):
     print "--- Pagina " + str(c)
     url = "http://www.rtp.pt/play/browseprog/"+id+"/"+str(c)+"/"
@@ -75,6 +77,8 @@ for c in range(1,int(totalpages)):
     items = soup.findAll('div',{'class': 'Elemento'})
 
     for item in items:
+        if exists >= 5:
+            sys.exit("A sair apos 5 falhas, ja devo ter tudo...")
         # url
         link = item.find('a')
         # data
@@ -93,7 +97,8 @@ for c in range(1,int(totalpages)):
         print "-- " +  dt, pt
 
         title = removeDisallowedFilenameChars(dt + "-" + pt)
-        parseRTMP(link['href'],title,id)
+        if parseRTMP(link['href'],title,id) == False:
+            exists = exists + 1
 
 
 
