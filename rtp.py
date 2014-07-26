@@ -30,24 +30,19 @@ def removeDisallowedFilenameChars(filename):
     cleanedFilename = unicodedata.normalize('NFKD', filename).encode('ASCII', 'ignore')
     return ''.join(c for c in cleanedFilename if c in validFilenameChars)
 
-def parseRTMP(url,dt):
+def parseRTMP(url,title):
     url = 'http://www.rtp.pt' + url
     page = urllib2.urlopen(url)
-    match = re.search('"file": "(.*?)","application": "(.*?)","streamer": "(.*?)"', page.read(), re.MULTILINE)
+    match = re.search('"file": ".*?//(.*?)"', page.read(), re.MULTILINE)
     if match:
-        fn = match.group(1).split('/')[5].replace('.mp3', '.flv')
-        cmd = 'rtmpdump -q -v -r "rtmp://' + match.group(3) + '/' + match.group(2) + '" -y "mp3:' + match.group(1) + '" -o "'+ dt + '.flv"'
-
-        #print cmd
-        if os.path.isfile(dt+'.mp3'):
+        cmd = 'wget "http://rsspod.rtp.pt/podcasts/' + match.group(1) + '" -O "'+title+'.mp3"'
+        print cmd
+        if os.path.isfile(title+'.mp3'):
             print "- Ja downloadada... a ignorar"
             return
 
         print "- A sacar..."
         os.system(cmd + "> /dev/null 2>&1")
-        print "- A extrair mp3 do flv..."
-        os.system('ffmpeg -i "' + dt + '.flv" -acodec copy "'+dt+'.mp3" > /dev/null 2>&1')
-        os.remove(dt + '.flv')
         print "- Done"
 
 id = "1085"

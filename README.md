@@ -6,8 +6,7 @@ RTP audio podcasts downloader
 Requirements:
 - Python
 - Beautiful Soup - http://www.crummy.com/software/BeautifulSoup/
-- rtmpdump - https://rtmpdump.mplayerhq.hu/
-- ffmpeg https://www.ffmpeg.org/
+- wget
 
 Instructions:
 - Extract the "bs4" directory from Beautiful Soup to the same directory of the script.
