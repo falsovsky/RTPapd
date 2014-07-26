@@ -18,12 +18,9 @@ Instructions:
 - Extract the "bs4" directory from the Beautiful Soup package to the directory of the script.
 - Run the script with an argument that is the progId to download
 
-```
-./rtp.py 1085
-```
-
-
-Eg: http://www.rtp.pt/play/p1085/costa-a-costa - The id is 1085
+Example:
+- The URL for the "Costa a Costa" program is http://www.rtp.pt/play/p1085/costa-a-costa so our progId is 1085.
+- To download it just do:
 ```
 ./rtp.py 1085
 ```
