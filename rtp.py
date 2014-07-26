@@ -8,6 +8,22 @@ import unicodedata
 import os
 import string
 
+months = {
+        'Jan': '01',
+        'Fev': '02',
+        'Mar': '03',
+        'Abr': '04',
+        'Mai': '05',
+        'Jun': '06',
+        'Jul': '07',
+        'Ago': '08',
+        'Set': '09',
+        'Out': '10',
+        'Nov': '11',
+        'Dez': '12'
+        }
+
+
 validFilenameChars = "-_. %s%s" % (string.ascii_letters, string.digits)
 
 def removeDisallowedFilenameChars(filename):
@@ -26,7 +42,7 @@ def parseRTMP(url,dt):
         if os.path.isfile(dt+'.mp3'):
             print "- Ja downloadada... a ignorar"
             return
-        
+
         print "- A sacar..."
         os.system(cmd + "> /dev/null 2>&1")
         print "- A extrair mp3 do flv..."
@@ -60,6 +76,12 @@ for c in range(1,int(totalpages)):
         # data
         dt = item.find('b').contents[0].strip()
         dt = dt.replace(' ', '_')
+
+        # mudar para AAAA_MM_DD
+        match = re.search(r"(\d+)_(\w+)_(\d+)", dt)
+        if match:
+                dt = match.group(3) + "_" + months[match.group(2)] + "_" + match.group(1)
+
         # parte ?
         pt = item.find('p').contents[0].strip()
         pt = pt.replace(' ', '_')
