@@ -36,7 +36,7 @@ def parseRTMP(url,dt):
     match = re.search('"file": "(.*?)","application": "(.*?)","streamer": "(.*?)"', page.read(), re.MULTILINE)
     if match:
         fn = match.group(1).split('/')[5].replace('.mp3', '.flv')
-        cmd = 'rtmpdump -r "rtmp://' + match.group(3) + '/' + match.group(2) + '" -y "mp3:' + match.group(1) + '" -o "'+ dt + '.flv"'
+        cmd = 'rtmpdump -q -v -r "rtmp://' + match.group(3) + '/' + match.group(2) + '" -y "mp3:' + match.group(1) + '" -o "'+ dt + '.flv"'
 
         #print cmd
         if os.path.isfile(dt+'.mp3'):
