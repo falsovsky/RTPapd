@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
 
 from bs4 import BeautifulSoup
 import urllib2
@@ -8,6 +9,7 @@ import unicodedata
 import os
 import string
 import sys
+import time
 
 months = {
         'Jan': '01',
@@ -35,10 +37,10 @@ def parseRTMP(url,title,progId):
     url = 'http://www.rtp.pt' + url
     programpath = scriptpath+"/"+progId
     if os.path.isdir(programpath) == False:
-            os.makedirs(programpath)
+        os.makedirs(programpath)
     destfn = programpath+"/"+title+'.mp3'
     page = urllib2.urlopen(url)
-    match = re.search('"file": ".*?//(.*?)"', page.read(), re.MULTILINE)
+    match = re.search('wavrss(.+?)"', page.read())
     if match:
         if os.path.isfile(destfn):
             print "- Ja downloadada... a ignorar"
@@ -57,24 +59,19 @@ if sys.argv[1].isdigit():
 else:
     sys.exit("progId tem de ser um numero")
 
-# apanhar o numero total de paginas
-url = "http://www.rtp.pt/play/browseprog/"+id+"/1/true"
-page = urllib2.urlopen(url)
-match = re.search(r'<a title="Fim.*?,page:(\d+)\}', page.read(), re.MULTILINE)
-if match:
-    totalpages = match.group(1)
-else:
-    exit
-
 exists = 0
-for c in range(1,int(totalpages)):
+c = 1
+while True:
     print "--- Pagina " + str(c)
-    url = "http://www.rtp.pt/play/browseprog/"+id+"/"+str(c)+"/"
+    url = "http://www.rtp.pt/play/bg_l_ep/?stamp=" + str(int(time.time())) + "&listDate=&listQuery=&listProgram=" + str(id) + "&listcategory=&listchannel=&listtype=recent&page=" + str(c) + "&type=all"
     page = urllib2.urlopen(url)
     soup = BeautifulSoup(page.read())
 
+    if (soup.find('div') == None):
+        sys.exit("ultima pagina")
+
     # apanha todos os items da pagina
-    items = soup.findAll('div',{'class': 'Elemento'})
+    items = soup.findAll('div',{'class': 'lazy'})
 
     for item in items:
         if exists >= 5:
@@ -82,23 +79,26 @@ for c in range(1,int(totalpages)):
         # url
         link = item.find('a')
         # data
-        dt = item.find('b').contents[0].strip()
+        dt = item.find('span',{'class': 'small'}).contents[0].strip()
         dt = dt.replace(' ', '_')
+        dt = dt.replace(',', '')
 
         # mudar para AAAA_MM_DD
         match = re.search(r"(\d+)_(\w+)_(\d+)", dt)
         if match:
-                dt = match.group(3) + "_" + months[match.group(2)] + "_" + match.group(1)
+           dt = match.group(3) + "_" + months[match.group(2)] + "_" + match.group(1)
 
         # parte ?
-        pt = item.find('p').contents[0].strip()
+        pts = item.findAll('b',{'class': 'text-dark-gray'})
+        pt = pts[1].contents[0]
+        pt = pt.replace('...', '').strip()
         pt = pt.replace(' ', '_')
 
         print "-- " +  dt, pt
 
         title = removeDisallowedFilenameChars(dt + "-" + pt)
         if parseRTMP(link['href'],title,id) == False:
-            exists = exists + 1
+           exists = exists + 1
 
-
+    c = c + 1
 
