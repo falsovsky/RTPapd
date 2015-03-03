@@ -76,6 +76,7 @@ while True:
     for item in items:
         if exists >= 5:
             sys.exit("A sair apos 5 falhas, ja devo ter tudo...")
+
         # url
         link = item.find('a')
         # data
@@ -90,9 +91,13 @@ while True:
 
         # parte ?
         pts = item.findAll('b',{'class': 'text-dark-gray'})
-        pt = pts[1].contents[0]
-        pt = pt.replace('...', '').strip()
-        pt = pt.replace(' ', '_')
+        try:
+            pt = pts[1].contents[0]
+            pt = pt.replace('...', '').strip()
+            pt = pt.replace(' ', '_')
+            pt = pt.replace('\n','')
+        except IndexError:
+            pt = ""
 
         print "-- " +  dt, pt
 
