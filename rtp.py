@@ -35,18 +35,23 @@ def removeDisallowedFilenameChars(filename):
 
 def parseRTMP(url,title,progId):
     url = 'http://www.rtp.pt' + url
+
+    match = re.search(r"play/p\d+/(e\d+)/", url)
+    episode_id = match.group(1)
+
     programpath = scriptpath+"/"+progId
     if os.path.isdir(programpath) == False:
         os.makedirs(programpath)
-    destfn = programpath+"/"+title+'.mp3'
+    destfn = programpath + "/" + title + "_" + episode_id + '.mp3'
     page = urllib2.urlopen(url)
-    match = re.search('wavrss(.+?)"', page.read())
+
+    match = re.search('"hls_url": "(.+?)",', page.read())
     if match:
         if os.path.isfile(destfn):
             print "- Ja downloadada... a ignorar"
             return False
         print "- A sacar..."
-        cmd = 'wget "http://rsspod.rtp.pt/podcasts/' + match.group(1) + '" -O "'+destfn+'"'
+        cmd = 'wget "' + match.group(1) + '" -O "' + destfn + '"'
         os.system(cmd + "> /dev/null 2>&1")
         print "- Done"
         return True
@@ -64,8 +69,9 @@ c = 1
 while True:
     print "--- Pagina " + str(c)
     url = "http://www.rtp.pt/play/bg_l_ep/?stamp=" + str(int(time.time())) + "&listDate=&listQuery=&listProgram=" + str(id) + "&listcategory=&listchannel=&listtype=recent&page=" + str(c) + "&type=all"
+
     page = urllib2.urlopen(url)
-    soup = BeautifulSoup(page.read())
+    soup = BeautifulSoup(page.read(), "html.parser")
 
     if (soup.find('div') == None):
         sys.exit("ultima pagina")
