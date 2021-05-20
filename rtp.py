@@ -1,116 +1,94 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
 
-import urllib2
 import re
-import unicodedata
 import os
-import string
 import sys
-import time
+import string
+import requests
 from bs4 import BeautifulSoup
 
-months = {
-    'Jan': '01',
-    'Fev': '02',
-    'Mar': '03',
-    'Abr': '04',
-    'Mai': '05',
-    'Jun': '06',
-    'Jul': '07',
-    'Ago': '08',
-    'Set': '09',
-    'Out': '10',
-    'Nov': '11',
-    'Dez': '12'
-}
 
-scriptpath = os.path.dirname(os.path.realpath(__file__))
-validFilenameChars = "-_. %s%s" % (string.ascii_letters, string.digits)
+def fix_filename(filename):
+    filename = filename.replace(' ', '_')
+    safechars = bytearray(('_-.()' + string.digits + string.ascii_letters).encode())
+    allchars = bytearray(range(0x100))
+    deletechars = bytearray(set(allchars) - set(safechars))
+    return filename.encode('ascii', 'ignore').translate(None, deletechars).decode()
 
-def removeDisallowedFilenameChars(filename):
-    cleanedFilename = unicodedata.normalize('NFKD', filename).encode('ASCII', 'ignore')
-    return ''.join(c for c in cleanedFilename if c in validFilenameChars)
+def parse_episodes(progId):
+    page = 1
+    while True:
+        url = "https://www.rtp.pt/play/bg_l_ep/?listProgram={}&page={}".format(progId, page)
+        print("Scraping Page {} ({})".format(page, url))
+        response = requests.get(
+            url,
+            headers={
+                'User-agent': 'Mozilla/5.0',
+                'Cookie': 'rtp_cookie_parental=0; rtp_privacy=666; rtp_cookie_privacy=permit 1,2,3,4; googlepersonalization=1; _recid='
+                }
+        )
+        soup = BeautifulSoup(response.content, "html.parser")
 
-def parseRTMP(url, title, progId):
-    url = 'http://www.rtp.pt' + url
+        if soup.find('article') is None:
+            sys.exit("No more pages.")
 
-    match = re.search(r"play/p\d+/(e\d+)/", url)
-    episode_id = match.group(1)
+        for article in soup.find_all('article'):
+            url = article.find('a')['href']
+            episode_date = article.find('span', {'class': 'episode-date'})
+            episode_title = article.find('h4', {'class': 'episode-title'})
+            yield {
+                'url': "https://rtp.pt{}".format(url),
+                'filename': fix_filename(
+                    "{}-{}.mp3".format(
+                        episode_date.text.strip(),
+                        episode_title.text.strip() if episode_title else ''
+                    )
+                )
+            }
+        page += 1
 
-    programpath = scriptpath+"/"+progId
-    if os.path.isdir(programpath) is False:
-        os.makedirs(programpath)
-    destfn = programpath + "/" + title + "_" + episode_id + '.mp3'
-    page = urllib2.urlopen(url)
-
-    match = re.search('file: "(.+?)",', page.read())
-    if match:
-        if os.path.isfile(destfn):
-            print "- Ja downloadada... a ignorar"
-            return False
-        print "- A sacar..."
-        cmd = 'wget "' + match.group(1) + '" -O "' + destfn + '"'
-        os.system(cmd + "> /dev/null 2>&1")
-        print "- Done"
-        return True
+def download_episode(episode, local_file):
+    response = requests.get(
+        episode['url'],
+        headers={
+            'User-agent': 'Mozilla/5.0',
+            'Cookie': 'rtp_cookie_parental=0; rtp_privacy=666; rtp_cookie_privacy=permit 1,2,3,4; googlepersonalization=1; _recid='
+            }
+    )
+    file_url = re.search(r"f = \"(.*?)\"", response.text)
+    if file_url:
+        cmd = "wget \"{}\" -O \"{}\" > /dev/null 2>&1".format(
+            file_url.group(1),
+            local_file
+        )
+        print("Downloading {} ...".format(local_file))
+        os.system(cmd)
+        print("Done.")
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        sys.exit("Correr com "+sys.argv[0]+" [progId]")
+        sys.exit("Run with {} [progId]".format(sys.argv[0]))
 
     if sys.argv[1].isdigit():
         progId = sys.argv[1]
     else:
-        sys.exit("progId tem de ser um numero")
+        sys.exit("progId must be numeric")
 
-    exists = 0
-    c = 1
-    while True:
-        print "--- Pagina " + str(c)
-        url = "http://www.rtp.pt/play/bg_l_ep/?stamp=" + str(int(time.time())) + "&listDate=&listQuery=&listProgram=" + str(progId) + "&listcategory=&listchannel=&listtype=recent&page=" + str(c) + "&type=all"
+    script_path = os.path.dirname(os.path.realpath(__file__))
+    directory = "{}/{}".format(script_path, progId)
+    if os.path.isdir(directory) is False:
+        os.makedirs(directory)
 
-        page = urllib2.urlopen(url)
-        soup = BeautifulSoup(page.read(), "html.parser")
-
-        if soup.find('div') is None:
-            sys.exit("ultima pagina")
-
-        # apanha todos os items da pagina
-        items = soup.findAll('div', {'class': 'lazy'})
-
-        for item in items:
-            if exists >= 5:
-                sys.exit("A sair apos 5 falhas, ja devo ter tudo...")
-
-            # url
-            link = item.find('a')
-            # data
-            dt = item.find('span', {'class': 'small'}).contents[0].strip()
-            dt = dt.replace(' ', '_')
-            dt = dt.replace(',', '')
-
-            # mudar para AAAA_MM_DD
-            match = re.search(r"(\d+)_(\w+)_(\d+)", dt)
-            if match:
-                dt = match.group(3) + "_" + months[match.group(2)] + "_" + match.group(1)
-
-            # parte ?
-            pts = item.findAll('b', {'class': 'text-dark-gray'})
-            try:
-                pt = pts[1].contents[0]
-                pt = pt.replace('...', '').strip()
-                pt = pt.replace(' ', '_')
-                pt = pt.replace('\n', '')
-            except IndexError:
-                pt = ""
-
-            print "-- " +  dt, pt
-
-            title = removeDisallowedFilenameChars(dt + "-" + pt)
-
-            if parseRTMP(link['href'], title, progId) is False:
-                exists = exists + 1
-
-        c = c + 1
+    failed = 0
+    for episode in parse_episodes(progId):
+        if failed >= 5:
+            sys.exit("Already have 5 files...")
+        local_file = "{}/{}".format(
+            directory,
+            episode['filename']
+        )
+        if os.path.isfile(local_file):
+            failed += 1
+            continue
+        download_episode(episode, local_file)

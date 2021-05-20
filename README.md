@@ -5,6 +5,7 @@ RTP audio podcasts downloader
 
 Requirements:
 - Python
+- Requests - https://docs.python-requests.org/en/master/
 - Beautiful Soup - http://www.crummy.com/software/BeautifulSoup/
 - wget
 
@@ -15,7 +16,6 @@ Features:
 - Uses a different directory per progId
 
 Instructions:
-- Extract the "bs4" directory from the Beautiful Soup package to the directory of the script.
 - Run the script with an argument that is the progId to download
 
 Example:
